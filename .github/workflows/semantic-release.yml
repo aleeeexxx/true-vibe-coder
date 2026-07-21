@@ -1,0 +1,70 @@
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.github/**'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run semantic-release
+        run: npx semantic-release
+
+      - name: Get latest tag
+        id: get-tag
+        if: success()
+        shell: bash
+        run: |
+          git fetch --tags
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$TAG" ]; then
+            echo "Latest tag: $TAG"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Release workflow
+        if: steps.get-tag.outputs.tag != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.get-tag.outputs.tag }}';
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: 'main',
+              inputs: {
+                tag: tag
+              }
+            });
+            console.log(`✅ Triggered Release workflow for tag: ${tag}`);

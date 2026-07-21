@@ -1,0 +1,19 @@
+name: Build
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - ".github/**"
+      - "!.github/workflows/build.yml"
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-common.yml
+    with:
+      sign: false
+      publish: false
+    secrets: inherit

@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and release'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/build-common.yml
+    with:
+      sign: true
+      publish: true
+      checkout_tag: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag || '' }}
+    secrets: inherit
