@@ -59,6 +59,8 @@ execFileSync(
     "AVFoundation",
     "-framework",
     "MediaPlayer",
+    "-framework",
+    "CoreAudio",
     "-o",
     mediaRemoteOutputPath,
   ],

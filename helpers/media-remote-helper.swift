@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Foundation
 import MediaPlayer
 
@@ -22,6 +23,148 @@ final class StandardOutput {
 
 private let output = StandardOutput()
 
+private func audioDeviceIds() -> [AudioDeviceID] {
+  var address = AudioObjectPropertyAddress(
+    mSelector: kAudioHardwarePropertyDevices,
+    mScope: kAudioObjectPropertyScopeGlobal,
+    mElement: kAudioObjectPropertyElementMain
+  )
+  var dataSize: UInt32 = 0
+
+  guard
+    AudioObjectGetPropertyDataSize(
+      AudioObjectID(kAudioObjectSystemObject),
+      &address,
+      0,
+      nil,
+      &dataSize
+    ) == noErr,
+    dataSize > 0
+  else {
+    return []
+  }
+
+  var devices = [AudioDeviceID](
+    repeating: 0,
+    count: Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+  )
+  guard
+    AudioObjectGetPropertyData(
+      AudioObjectID(kAudioObjectSystemObject),
+      &address,
+      0,
+      nil,
+      &dataSize,
+      &devices
+    ) == noErr
+  else {
+    return []
+  }
+
+  return devices
+}
+
+private func audioDeviceUInt32Property(
+  _ device: AudioDeviceID,
+  selector: AudioObjectPropertySelector
+) -> UInt32? {
+  var address = AudioObjectPropertyAddress(
+    mSelector: selector,
+    mScope: kAudioObjectPropertyScopeGlobal,
+    mElement: kAudioObjectPropertyElementMain
+  )
+  var value: UInt32 = 0
+  var dataSize = UInt32(MemoryLayout<UInt32>.size)
+
+  guard
+    AudioObjectGetPropertyData(
+      device,
+      &address,
+      0,
+      nil,
+      &dataSize,
+      &value
+    ) == noErr
+  else {
+    return nil
+  }
+
+  return value
+}
+
+private func audioDeviceStringProperty(
+  _ device: AudioDeviceID,
+  selector: AudioObjectPropertySelector
+) -> String? {
+  var address = AudioObjectPropertyAddress(
+    mSelector: selector,
+    mScope: kAudioObjectPropertyScopeGlobal,
+    mElement: kAudioObjectPropertyElementMain
+  )
+  var value: Unmanaged<CFString>?
+  var dataSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+
+  guard
+    AudioObjectGetPropertyData(
+      device,
+      &address,
+      0,
+      nil,
+      &dataSize,
+      &value
+    ) == noErr
+  else {
+    return nil
+  }
+
+  return value?.takeUnretainedValue() as String?
+}
+
+private func audioDeviceHasOutput(_ device: AudioDeviceID) -> Bool {
+  var address = AudioObjectPropertyAddress(
+    mSelector: kAudioDevicePropertyStreams,
+    mScope: kAudioDevicePropertyScopeOutput,
+    mElement: kAudioObjectPropertyElementMain
+  )
+  var dataSize: UInt32 = 0
+
+  return AudioObjectGetPropertyDataSize(
+    device,
+    &address,
+    0,
+    nil,
+    &dataSize
+  ) == noErr && dataSize >= UInt32(MemoryLayout<AudioStreamID>.size)
+}
+
+private func builtInOutputDevice() -> (uid: String, name: String)? {
+  for device in audioDeviceIds() {
+    guard
+      audioDeviceHasOutput(device),
+      audioDeviceUInt32Property(
+        device,
+        selector: kAudioDevicePropertyTransportType
+      ) == kAudioDeviceTransportTypeBuiltIn,
+      let uid = audioDeviceStringProperty(
+        device,
+        selector: kAudioDevicePropertyDeviceUID
+      ),
+      !uid.isEmpty
+    else {
+      continue
+    }
+
+    let name =
+      audioDeviceStringProperty(
+        device,
+        selector: kAudioObjectPropertyName
+      ) ?? "Built-in output"
+    return (uid, name)
+  }
+
+  return nil
+}
+
 private func appendLittleEndian<T: FixedWidthInteger>(_ value: T, to data: inout Data) {
   var littleEndianValue = value.littleEndian
   withUnsafeBytes(of: &littleEndianValue) { bytes in
@@ -30,8 +173,8 @@ private func appendLittleEndian<T: FixedWidthInteger>(_ value: T, to data: inout
 }
 
 private func createSilentWaveFile() throws -> URL {
-  let sampleRate: UInt32 = 8_000
-  let channelCount: UInt16 = 1
+  let sampleRate: UInt32 = 48_000
+  let channelCount: UInt16 = 2
   let bitsPerSample: UInt16 = 16
   let seconds: UInt32 = 1
   let bytesPerSample = UInt32(bitsPerSample / 8)
@@ -67,12 +210,17 @@ final class MediaRemoteSession {
   private var commandTokens: [Any] = []
   private var keepAliveTimer: Timer?
   private var lastReportedActiveState: Bool?
+  private var silentOutputName = "Default output"
 
   func start() throws {
     let silentFile = try createSilentWaveFile()
     let item = AVPlayerItem(url: silentFile)
     looper = AVPlayerLooper(player: player, templateItem: item)
-    player.volume = 0
+    if let builtInOutput = builtInOutputDevice() {
+      player.audioOutputDeviceUniqueID = builtInOutput.uid
+      silentOutputName = builtInOutput.name
+    }
+    player.isMuted = true
     player.play()
 
     let infoCenter = MPNowPlayingInfoCenter.default()
@@ -104,6 +252,7 @@ final class MediaRemoteSession {
         output.write([
           "type": "media-remote-status",
           "active": isActive,
+          "silentOutput": self.silentOutputName,
         ])
       }
     }
