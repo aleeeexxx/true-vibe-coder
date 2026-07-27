@@ -104,7 +104,9 @@ let mediaRemoteSessionActive = false;
 let mediaRemoteEventSequence = 0;
 let mediaRemoteMappingKey: string | null = null;
 let mediaRemoteLastCommand: string | null = null;
+let mediaRemoteLastAcceptedInputAt = 0;
 let mediaRemoteExecutionQueue: Promise<void> = Promise.resolve();
+const MEDIA_REMOTE_INPUT_DEBOUNCE_MS = 280;
 const preload = path.join(__dirname, "../preload/index.mjs");
 const indexHtml = path.join(RENDERER_DIST, "index.html");
 
@@ -562,6 +564,15 @@ function handleMediaRemoteHelperLine(line: string) {
     }
 
     if (message.type === "media-remote-input") {
+      const now = Date.now();
+      if (
+        now - mediaRemoteLastAcceptedInputAt <
+        MEDIA_REMOTE_INPUT_DEBOUNCE_MS
+      ) {
+        return;
+      }
+      mediaRemoteLastAcceptedInputAt = now;
+
       const command =
         typeof message.command === "string" ? message.command : "toggle";
       broadcastMediaRemoteInput(command);
@@ -617,6 +628,7 @@ function startMediaRemoteHelper() {
 
   mediaRemoteHelperBuffer = "";
   mediaRemoteSessionActive = false;
+  mediaRemoteLastAcceptedInputAt = 0;
   const helper = spawn(helperPath, [], {
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -681,6 +693,7 @@ function stopMediaRemoteHelper() {
   mediaRemoteHelperBuffer = "";
   mediaRemoteCaptureRegistered = false;
   mediaRemoteSessionActive = false;
+  mediaRemoteLastAcceptedInputAt = 0;
 
   if (helper && helper.exitCode === null) {
     helper.kill("SIGTERM");
@@ -911,6 +924,7 @@ const charKeyMap: Record<string, Key> = {
 keyboard.config.autoDelayMs = 0;
 const KEY_TAP_DURATION_MS = 140;
 const KEY_SETTLE_DELAY_MS = 24;
+const PRIMARY_RELEASE_TO_MODIFIER_RELEASE_DELAY_MS = 120;
 const MODIFIER_KEY_PAIRS = [
   [Key.LeftShift, Key.RightShift],
   [Key.LeftControl, Key.RightControl],
@@ -1005,9 +1019,50 @@ async function releaseKeySequence(keys: Key[]) {
 }
 
 async function tapKeySequence(keys: Key[]) {
-  await pressKeySequence(keys);
-  await delay(KEY_TAP_DURATION_MS);
-  await releaseKeySequence(keys);
+  const { modifiers, primaryKeys } = splitShortcutSequence(keys);
+  const pressedKeys: Key[] = [];
+
+  const pressAndTrack = async (key: Key) => {
+    await keyboard.pressKey(key);
+    pressedKeys.push(key);
+    await delay(KEY_SETTLE_DELAY_MS);
+  };
+
+  const releaseAndUntrack = async (key: Key) => {
+    await keyboard.releaseKey(key);
+    const trackedIndex = pressedKeys.lastIndexOf(key);
+    if (trackedIndex >= 0) {
+      pressedKeys.splice(trackedIndex, 1);
+    }
+    await delay(KEY_SETTLE_DELAY_MS);
+  };
+
+  try {
+    for (const modifier of modifiers) {
+      await pressAndTrack(modifier);
+    }
+    for (const primaryKey of primaryKeys) {
+      await pressAndTrack(primaryKey);
+    }
+
+    await delay(KEY_TAP_DURATION_MS);
+
+    for (const primaryKey of primaryKeys.slice().reverse()) {
+      await releaseAndUntrack(primaryKey);
+    }
+
+    if (modifiers.length > 0 && primaryKeys.length > 0) {
+      await delay(PRIMARY_RELEASE_TO_MODIFIER_RELEASE_DELAY_MS);
+    }
+
+    for (const modifier of modifiers.slice().reverse()) {
+      await releaseAndUntrack(modifier);
+    }
+  } finally {
+    if (pressedKeys.length > 0) {
+      await releaseKeysBestEffort(pressedKeys.slice().reverse());
+    }
+  }
 }
 
 async function releaseKeysBestEffort(keys: Key[]) {
