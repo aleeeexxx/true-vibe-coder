@@ -281,18 +281,33 @@ function MappingCallouts({
   );
 }
 
-function TouchContact({ style }: { style?: CSSProperties }) {
-  return style ? <span className="apple-remote-touch-contact" style={style} /> : null;
+function TouchContact({
+  style,
+  gestureZone,
+}: {
+  style?: CSSProperties;
+  gestureZone?: AppleRemoteTouchpadVisualState["gestureZone"];
+}) {
+  return style ? (
+    <span
+      className={`apple-remote-touch-contact ${
+        gestureZone === "ring" ? "is-ring-scroll" : "is-pointer-move"
+      }`}
+      style={style}
+    />
+  ) : null;
 }
 
 function SilverRemote({
   active,
   labels,
   touchStyle,
+  touchGestureZone,
 }: {
   active: RemoteActiveClasses;
   labels: RemoteControlLabels;
   touchStyle?: CSSProperties;
+  touchGestureZone?: AppleRemoteTouchpadVisualState["gestureZone"];
 }) {
   const clickpadState = [active.up, active.right, active.down, active.left];
   const clickpadClass = clickpadState.includes("is-hold-active")
@@ -308,8 +323,15 @@ function SilverRemote({
           <span><Power size={12} strokeWidth={2.2} /></span>
         </div>
       </div>
-      <div className={controlClass("apple-remote-clickpad", clickpadClass)}>
-        <TouchContact style={touchStyle} />
+      <div
+        className={controlClass(
+          `apple-remote-clickpad ${
+            touchGestureZone === "ring" ? "is-ring-gesture" : ""
+          }`,
+          clickpadClass
+        )}
+      >
+        <TouchContact style={touchStyle} gestureZone={touchGestureZone} />
         {(["up", "right", "down", "left"] as const).map((direction) => (
           <span
             key={direction}
@@ -353,7 +375,7 @@ function BlackRemote({
   return (
     <>
       <div className={controlClass("apple-remote-touchpad", active.center)}>
-        <TouchContact style={touchStyle} />
+        <TouchContact style={touchStyle} gestureZone="pointer" />
       </div>
       <div className="apple-remote-button-row">
         <div className={controlClass("apple-remote-button", active.back)}><span>Menu</span></div>
@@ -479,7 +501,12 @@ export function AppleRemoteWorkspace({
       <div className="apple-remote-visualization">
         <div className={`apple-remote-body ${device.modelInfo.bodyStyle}`}>
           {isSilver ? (
-            <SilverRemote active={active} labels={labels} touchStyle={touchStyle} />
+            <SilverRemote
+              active={active}
+              labels={labels}
+              touchStyle={touchStyle}
+              touchGestureZone={touchpadVisualState?.gestureZone}
+            />
           ) : (
             <BlackRemote active={active} labels={labels} touchStyle={touchStyle} />
           )}

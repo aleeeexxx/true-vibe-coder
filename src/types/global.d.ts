@@ -24,11 +24,13 @@ export interface PointerAssistVisualState {
   targetRole: string | null
   targetKind: string | null
   targetRect: { x: number; y: number; width: number; height: number } | null
+  clickRegion: { x: number; y: number; width: number; height: number } | null
   reason: string
 }
 
 export interface MouseSimulator {
   moveMouse: (deltaX: number, deltaY: number) => Promise<{ success: boolean; error?: string }>
+  scrollPixels: (deltaY: number) => Promise<{ success: boolean; error?: string }>
   buttonToggle: (button: string, down: boolean) => Promise<{ success: boolean; error?: string }>
   configurePointerAssist?: (config: PointerAssistConfig) => Promise<{ success: boolean; config?: PointerAssistConfig; error?: string }>
   getPointerAssistConfig?: () => Promise<{ success: boolean; config?: PointerAssistConfig; error?: string }>

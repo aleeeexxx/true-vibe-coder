@@ -33,6 +33,7 @@ const DEFAULT_POINTER_ASSIST_STATE: PointerAssistVisualState = {
   targetRole: null,
   targetKind: null,
   targetRect: null,
+  clickRegion: null,
   reason: "initial",
 };
 

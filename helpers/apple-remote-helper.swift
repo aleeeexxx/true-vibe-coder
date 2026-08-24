@@ -120,6 +120,47 @@ let pointerAssistActionCandidateRoles = Set([
 
 let pointerAssistMode = CommandLine.arguments.contains("--pointer-assist")
 
+func postPixelScroll(deltaY: Double) {
+  let clampedDelta = max(-240, min(240, deltaY))
+  guard abs(clampedDelta) >= 0.5 else {
+    return
+  }
+
+  let wheelDelta = Int32((-clampedDelta).rounded())
+  guard let event = CGEvent(
+    scrollWheelEvent2Source: CGEventSource(stateID: .hidSystemState),
+    units: .pixel,
+    wheelCount: 1,
+    wheel1: wheelDelta,
+    wheel2: 0,
+    wheel3: 0
+  ) else {
+    return
+  }
+
+  event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+  event.post(tap: .cghidEventTap)
+}
+
+func startCommandInput() {
+  DispatchQueue.global(qos: .userInteractive).async {
+    while let line = readLine(strippingNewline: true) {
+      guard
+        let data = line.data(using: .utf8),
+        let command = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        command["type"] as? String == "scroll-pixels",
+        let deltaY = command["deltaY"] as? NSNumber
+      else {
+        continue
+      }
+
+      DispatchQueue.main.async {
+        postPixelScroll(deltaY: deltaY.doubleValue)
+      }
+    }
+  }
+}
+
 let remoteHidUsagePagesToOpen = [12, 32, 65280]
 let remoteHidMatchingDictionaries = remoteProductIds.flatMap { productId in
   remoteHidUsagePagesToOpen.map { usagePage -> [String: Any] in
@@ -985,6 +1026,7 @@ if pointerAssistMode {
 
   startMultitouchSupport()
   startMultitouchScanTimer()
+  startCommandInput()
   output.write(["type": "ready", "mode": "apple-remote"])
   CFRunLoopRun()
 }

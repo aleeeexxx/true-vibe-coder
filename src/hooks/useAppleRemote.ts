@@ -9,6 +9,13 @@ import {
   normalizePointerRotation,
   PointerRotation,
 } from "../utils/pointerRotation";
+import {
+  getClickpadClockwiseAngle,
+  getClickpadClockwiseDelta,
+  getClickpadGestureZone,
+  getClickpadRingScrollPixels,
+  type ClickpadGestureZone,
+} from "../utils/clickpadGesture";
 
 const STORAGE_KEY = "apple-remote-mappings";
 const REMOTE_SESSION_ACTIVE_KEY = "apple-remote-session-active";
@@ -403,6 +410,7 @@ export interface AppleRemoteTouchpadVisualState {
   y: number;
   size: number;
   active: boolean;
+  gestureZone: ClickpadGestureZone;
 }
 
 interface AppleRemoteSpecialActionHandlers {
@@ -442,6 +450,8 @@ type TouchpadCursorState = {
   frame: number;
   x: number;
   y: number;
+  gestureZone: ClickpadGestureZone;
+  clockwiseAngle: number;
 };
 
 type ButtonHoldState = {
@@ -458,6 +468,10 @@ type ButtonMappingGroup = {
 
 type PendingMouseMovement = {
   deltaX: number;
+  deltaY: number;
+};
+
+type PendingTouchpadScroll = {
   deltaY: number;
 };
 
@@ -1543,6 +1557,9 @@ export function useAppleRemote(
   const pendingMouseMovementsRef = useRef<Map<string, PendingMouseMovement>>(
     new Map()
   );
+  const pendingTouchpadScrollsRef = useRef<Map<string, PendingTouchpadScroll>>(
+    new Map()
+  );
   const nativeSelectorValuesRef = useRef<Map<string, number>>(new Map());
   const onTogglePointerAssistRef = useRef<
     AppleRemoteSpecialActionHandlers["onTogglePointerAssist"]
@@ -1649,6 +1666,7 @@ export function useAppleRemote(
       keyRepeatTimersRef.current.clear();
       touchpadPressLockKeysRef.current.clear();
       pendingMouseMovementsRef.current.clear();
+      pendingTouchpadScrollsRef.current.clear();
     };
   }, []);
 
@@ -2184,6 +2202,45 @@ export function useAppleRemote(
     []
   );
 
+  const scrollTouchpad = useCallback((deviceId: string, deltaY: number) => {
+    const scrollPixels = window.mouseSimulator?.scrollPixels;
+    if (!scrollPixels || Math.abs(deltaY) < 0.5) {
+      return;
+    }
+
+    const stateKey = `apple-remote-${deviceId}-ring-scroll`;
+    const queuedScroll = pendingTouchpadScrollsRef.current.get(stateKey);
+    if (queuedScroll) {
+      queuedScroll.deltaY = clamp(queuedScroll.deltaY + deltaY, -240, 240);
+      return;
+    }
+
+    const sendScroll = (nextDeltaY: number) => {
+      pendingTouchpadScrollsRef.current.set(stateKey, { deltaY: 0 });
+      scrollPixels(nextDeltaY)
+        .catch((error) => {
+          console.error("Error scrolling from Apple Remote clickpad:", error);
+        })
+        .finally(() => {
+          const nextQueuedScroll = pendingTouchpadScrollsRef.current.get(stateKey);
+          if (!nextQueuedScroll) {
+            return;
+          }
+
+          if (Math.abs(nextQueuedScroll.deltaY) < 0.5) {
+            pendingTouchpadScrollsRef.current.delete(stateKey);
+            return;
+          }
+
+          const queuedDeltaY = nextQueuedScroll.deltaY;
+          nextQueuedScroll.deltaY = 0;
+          sendScroll(queuedDeltaY);
+        });
+    };
+
+    sendScroll(deltaY);
+  }, []);
+
   const handleInputReport = useCallback(
     (deviceId: string, event: HIDInputReportEvent) => {
       const bytes = bytesFromDataView(event.data);
@@ -2287,7 +2344,11 @@ export function useAppleRemote(
   }, []);
 
   const updateTouchpadVisual = useCallback(
-    (deviceId: string, input: AppleRemoteTouchpadInput) => {
+    (
+      deviceId: string,
+      input: AppleRemoteTouchpadInput,
+      gestureZone: ClickpadGestureZone
+    ) => {
       if (touchpadVisualReleaseTimerRef.current !== null) {
         window.clearTimeout(touchpadVisualReleaseTimerRef.current);
         touchpadVisualReleaseTimerRef.current = null;
@@ -2299,6 +2360,7 @@ export function useAppleRemote(
         y: clamp(input.y, 0, 1),
         size: clamp(input.size, 0, 1),
         active: true,
+        gestureZone,
       });
     },
     []
@@ -2443,7 +2505,17 @@ export function useAppleRemote(
         return;
       }
 
-      updateTouchpadVisual(deviceId, input);
+      const previousState = touchpadCursorStateRef.current;
+      const isSameTouch =
+        previousState?.deviceId === deviceId &&
+        previousState.touchId === input.touchId &&
+        input.frame > previousState.frame;
+      const gestureZone = getClickpadGestureZone(
+        input.x,
+        input.y,
+        isSameTouch ? previousState.gestureZone : undefined
+      );
+      updateTouchpadVisual(deviceId, input, gestureZone);
 
       const touchpadMovementIsLocked = touchpadPressLockIsActive(
         touchpadPressLockKeysRef.current,
@@ -2454,13 +2526,14 @@ export function useAppleRemote(
         return;
       }
 
-      const previousState = touchpadCursorStateRef.current;
       const nextState: TouchpadCursorState = {
         deviceId,
         touchId: input.touchId,
         frame: input.frame,
         x: input.x,
         y: input.y,
+        gestureZone,
+        clockwiseAngle: getClickpadClockwiseAngle(input.x, input.y),
       };
 
       if (
@@ -2475,6 +2548,25 @@ export function useAppleRemote(
 
       touchpadCursorStateRef.current = nextState;
 
+      if (gestureZone !== previousState.gestureZone) {
+        if (gestureZone === "ring") {
+          void window.mouseSimulator?.endPointerAssistGesture?.();
+        }
+        return;
+      }
+
+      if (gestureZone === "ring") {
+        const angleDelta = getClickpadClockwiseDelta(
+          previousState.clockwiseAngle,
+          nextState.clockwiseAngle
+        );
+        const scrollPixels = getClickpadRingScrollPixels(angleDelta);
+        if (scrollPixels !== 0) {
+          scrollTouchpad(deviceId, scrollPixels);
+        }
+        return;
+      }
+
       const delta = calculateTouchpadCursorDelta(
         cursorMapping,
         input,
@@ -2485,7 +2577,7 @@ export function useAppleRemote(
         moveMouse(deviceId, delta.x, delta.y);
       }
     },
-    [clearTouchpadVisual, moveMouse, updateTouchpadVisual]
+    [clearTouchpadVisual, moveMouse, scrollTouchpad, updateTouchpadVisual]
   );
 
   const nudgeClickpadDirection = useCallback(
@@ -3007,6 +3099,7 @@ export function useAppleRemote(
     keyRepeatTimersRef.current.clear();
     previousButtonStatesRef.current.clear();
     pendingMouseMovementsRef.current.clear();
+    pendingTouchpadScrollsRef.current.clear();
     nativeSelectorValuesRef.current.clear();
     setDevices([]);
     setActiveButtonStates({});

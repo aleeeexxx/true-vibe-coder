@@ -41,6 +41,9 @@ contextBridge.exposeInMainWorld('mouseSimulator', {
   moveMouse: (deltaX: number, deltaY: number) => {
     return ipcRenderer.invoke('mouse-move', deltaX, deltaY)
   },
+  scrollPixels: (deltaY: number) => {
+    return ipcRenderer.invoke('touchpad-scroll-pixels', deltaY)
+  },
   buttonToggle: (button: string, down: boolean) => {
     return ipcRenderer.invoke('mouse-button-toggle', button, down)
   },

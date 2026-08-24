@@ -25,6 +25,10 @@ import {
   chooseProjectedIntentTarget,
   type PointerIntentTarget,
 } from "./pointerAssistIntent";
+import {
+  getPointerAssistClickRegion,
+  pointIsInAssistRect,
+} from "./pointerAssistClickRegion";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_NAME = "ture vibe coder";
@@ -92,6 +96,9 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 let win: BrowserWindow | null = null;
+let pointerAssistOverlayWindow: BrowserWindow | null = null;
+let pointerAssistOverlayHideTimer: ReturnType<typeof setTimeout> | null = null;
+let pointerAssistOverlayRegionKey = "";
 let isQuitting = false;
 let appleRemoteHelper: ChildProcess | null = null;
 let appleRemoteHelperBuffer = "";
@@ -162,6 +169,7 @@ type PointerAssistVisualState = {
   targetRole: string | null;
   targetKind: string | null;
   targetRect: DisplayBounds | null;
+  clickRegion: DisplayBounds | null;
   reason: string;
 };
 
@@ -237,6 +245,10 @@ function updatePointerAssistTargets(message: unknown) {
     ? message.targets.filter(isPointerAssistTarget)
     : [];
   pointerAssistTargetsUpdatedAt = Date.now();
+
+  if (pointerAssistLockedTargetId) {
+    syncPointerAssistOverlay(createPointerAssistState("targets-updated"));
+  }
 }
 
 function isLikelyAppleRemoteHidDevice(device: HidDeviceCandidate): boolean {
@@ -365,7 +377,7 @@ function startAppleRemoteHelper() {
   const helperPath = getAppleRemoteHelperPath();
   appleRemoteHelperBuffer = "";
   const helper = spawn(helperPath, [], {
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
   });
   appleRemoteHelper = helper;
 
@@ -403,6 +415,16 @@ function startAppleRemoteHelper() {
   });
 
   return { success: true };
+}
+
+function sendAppleRemoteHelperCommand(command: Record<string, unknown>) {
+  const helper = appleRemoteHelper;
+  if (!helper || helper.killed || !helper.stdin?.writable) {
+    return false;
+  }
+
+  helper.stdin.write(`${JSON.stringify(command)}\n`);
+  return true;
 }
 
 function stopAppleRemoteHelper() {
@@ -774,6 +796,115 @@ function createWindow() {
       win?.hide();
     }
   });
+}
+
+function hidePointerAssistOverlay() {
+  if (pointerAssistOverlayHideTimer) {
+    clearTimeout(pointerAssistOverlayHideTimer);
+    pointerAssistOverlayHideTimer = null;
+  }
+
+  if (pointerAssistOverlayWindow && !pointerAssistOverlayWindow.isDestroyed()) {
+    pointerAssistOverlayWindow.hide();
+  }
+}
+
+function createPointerAssistOverlay() {
+  if (process.platform !== "darwin" || pointerAssistOverlayWindow) {
+    return;
+  }
+
+  const overlay = new BrowserWindow({
+    width: 48,
+    height: 48,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    focusable: false,
+    skipTaskbar: true,
+    hasShadow: false,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      backgroundThrottling: false,
+    },
+  });
+
+  pointerAssistOverlayWindow = overlay;
+  overlay.setIgnoreMouseEvents(true, { forward: true });
+  overlay.setAlwaysOnTop(true, "floating");
+  overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  overlay.on("closed", () => {
+    pointerAssistOverlayWindow = null;
+  });
+
+  const overlayHtml = `<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; pointer-events: none; }
+          .hit-region {
+            position: absolute;
+            inset: 1px;
+            border: 1px solid rgba(42, 126, 104, 0.34);
+            border-radius: 10px;
+            background: rgba(42, 126, 104, 0.035);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(20, 72, 59, 0.08);
+          }
+        </style>
+      </head>
+      <body><div class="hit-region"></div></body>
+    </html>`;
+  void overlay.loadURL(
+    `data:text/html;charset=utf-8,${encodeURIComponent(overlayHtml)}`
+  );
+}
+
+function syncPointerAssistOverlay(state: PointerAssistVisualState) {
+  const overlay = pointerAssistOverlayWindow;
+  const region = state.clickRegion;
+  if (
+    !overlay ||
+    overlay.isDestroyed() ||
+    !state.enabled ||
+    !state.locked ||
+    !region ||
+    region.width < 2 ||
+    region.height < 2
+  ) {
+    hidePointerAssistOverlay();
+    return;
+  }
+
+  const bounds = {
+    x: Math.round(region.x),
+    y: Math.round(region.y),
+    width: Math.max(2, Math.round(region.width)),
+    height: Math.max(2, Math.round(region.height)),
+  };
+  const regionKey = `${bounds.x}:${bounds.y}:${bounds.width}:${bounds.height}`;
+  if (regionKey !== pointerAssistOverlayRegionKey) {
+    overlay.setBounds(bounds);
+    pointerAssistOverlayRegionKey = regionKey;
+  }
+  if (!overlay.isVisible()) {
+    overlay.showInactive();
+  }
+
+  if (pointerAssistOverlayHideTimer) {
+    clearTimeout(pointerAssistOverlayHideTimer);
+  }
+  pointerAssistOverlayHideTimer = setTimeout(
+    hidePointerAssistOverlay,
+    Math.max(80, pointerAssistLockedUntil - Date.now() + 80)
+  );
 }
 
 // Check and request accessibility permissions on macOS
@@ -1543,6 +1674,37 @@ function getFreshNavigablePointerAssistTargets(): PointerAssistTarget[] {
     : [];
 }
 
+function getPointerAssistTargetClickRegion(
+  target: PointerAssistTarget
+): DisplayBounds | null {
+  if (!isSmallAccessibilityTarget(target)) {
+    return null;
+  }
+
+  const peers = pointerAssistTargets
+    .filter(
+      (candidate) =>
+        candidate.id !== target.id && isSmallAccessibilityTarget(candidate)
+    )
+    .map((candidate) => ({
+      x: candidate.x,
+      y: candidate.y,
+      width: candidate.width,
+      height: candidate.height,
+    }));
+
+  return getPointerAssistClickRegion(
+    {
+      x: target.x,
+      y: target.y,
+      width: target.width,
+      height: target.height,
+    },
+    peers,
+    12
+  );
+}
+
 function clearPointerAssistLock() {
   const hadLock = Boolean(pointerAssistLockedTargetId || pointerAssistLockedUntil);
   pointerAssistLockedTargetId = null;
@@ -1636,14 +1798,16 @@ function createPointerAssistState(reason: string): PointerAssistVisualState {
           height: target.height,
         }
       : null,
+    clickRegion: target ? getPointerAssistTargetClickRegion(target) : null,
     reason,
   };
 }
 
 function broadcastPointerAssistState(reason: string) {
   const state = createPointerAssistState(reason);
+  syncPointerAssistOverlay(state);
   BrowserWindow.getAllWindows().forEach((window) => {
-    if (!window.isDestroyed()) {
+    if (!window.isDestroyed() && window !== pointerAssistOverlayWindow) {
       window.webContents.send("pointer-assist-state", state);
     }
   });
@@ -2177,6 +2341,7 @@ function applyLockedPointerAssist(
   }
 
   pointerAssistLockedUntil = now + 1400;
+  syncPointerAssistOverlay(createPointerAssistState("sticky"));
 
   const distance = distanceBetweenPoints(nextPoint, targetPoint);
   const stickyRadius =
@@ -2409,6 +2574,40 @@ ipcMain.handle("mouse-move", async (_event, deltaX: number, deltaY: number) => {
   }
 });
 
+ipcMain.handle("touchpad-scroll-pixels", async (_event, deltaY: number) => {
+  try {
+    if (!hasAccessibilityPermission()) {
+      return accessibilityPermissionError();
+    }
+
+    const normalizedDelta = clamp(Number(deltaY), -240, 240);
+    if (!Number.isFinite(normalizedDelta) || Math.abs(normalizedDelta) < 0.5) {
+      return { success: true };
+    }
+
+    if (!sendAppleRemoteHelperCommand({
+      type: "scroll-pixels",
+      deltaY: normalizedDelta,
+    })) {
+      const startResult = startAppleRemoteHelper();
+      if (!startResult.success || !sendAppleRemoteHelperCommand({
+        type: "scroll-pixels",
+        deltaY: normalizedDelta,
+      })) {
+        return {
+          success: false,
+          error: startResult.error ?? "Apple Remote helper is not available.",
+        };
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error scrolling from clickpad ring:", error);
+    return { success: false, error: String(error) };
+  }
+});
+
 ipcMain.handle("pointer-assist-end-gesture", async () => {
   try {
     if (!pointerAssistConfig.enabled || !hasAccessibilityPermission()) {
@@ -2531,6 +2730,37 @@ const mouseButtonMap: Record<string, Button> = {
   MouseMiddle: Button.MIDDLE,
 };
 
+async function alignPointerForMagneticClick(): Promise<void> {
+  if (!pointerAssistConfig.enabled) {
+    return;
+  }
+
+  const target = getLockedSmallPointerAssistTarget();
+  if (!target) {
+    return;
+  }
+
+  const clickRegion = getPointerAssistTargetClickRegion(target);
+  if (!clickRegion) {
+    return;
+  }
+
+  const currentPoint = await mouse.getPosition();
+  if (!pointIsInAssistRect(currentPoint, clickRegion)) {
+    return;
+  }
+
+  const targetPoint = constrainPointToDisplays(
+    getPointerAssistTargetPoint(target, currentPoint)
+  );
+  await mouse.setPosition({
+    x: Math.round(targetPoint.x),
+    y: Math.round(targetPoint.y),
+  });
+  pointerAssistLockedUntil = Date.now() + 1400;
+  syncPointerAssistOverlay(createPointerAssistState("click-align"));
+}
+
 // Handle mouse button toggle requests
 ipcMain.handle(
   "mouse-button-toggle",
@@ -2547,6 +2777,9 @@ ipcMain.handle(
       }
 
       if (down) {
+        if (button === "MouseLeft") {
+          await alignPointerForMagneticClick();
+        }
         await mouse.pressButton(nutButton);
       } else {
         await mouse.releaseButton(nutButton);
@@ -2743,6 +2976,7 @@ app.whenReady().then(() => {
   }
 
   createWindow();
+  createPointerAssistOverlay();
   // Check permissions
   checkAccessibilityPermissions();
   void releaseAllKnownModifiersBestEffort();
@@ -2752,6 +2986,7 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   isQuitting = true;
+  hidePointerAssistOverlay();
   void releaseAllKnownModifiersBestEffort();
   stopAppleRemoteHelper();
   stopPointerAssistHelper();
