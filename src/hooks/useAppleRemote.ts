@@ -42,7 +42,8 @@ const BACKSPACE_REPEAT_TAP_DURATION_MS = 12;
 const DIRECTION_NUDGE_REPEAT_INITIAL_DELAY_MS = 280;
 const DIRECTION_NUDGE_REPEAT_MAX_INTERVAL_MS = 70;
 const DIRECTION_NUDGE_REPEAT_MIN_INTERVAL_MS = 34;
-const TOUCHPAD_VISUAL_RELEASE_MS = 90;
+const TOUCHPAD_VISUAL_RELEASE_MS = 140;
+const TOUCHPAD_RING_RELEASE_GRACE_MS = 140;
 const TOUCHPAD_MIN_DELTA = 0.001;
 const TOUCHPAD_MAX_DELTA = 0.35;
 const TOUCHPAD_PRESS_LOCK_STALE_MS = 1800;
@@ -1547,6 +1548,7 @@ export function useAppleRemote(
   >(new Map());
   const touchpadCursorStateRef = useRef<TouchpadCursorState | null>(null);
   const touchpadVisualReleaseTimerRef = useRef<number | null>(null);
+  const touchpadRingReleaseTimerRef = useRef<number | null>(null);
   const touchpadPressLockKeysRef = useRef<Map<string, number>>(new Map());
   const buttonHoldStatesRef = useRef<Map<string, ButtonHoldState>>(new Map());
   const visualHoldTimersRef = useRef<Map<string, number>>(new Map());
@@ -1646,6 +1648,10 @@ export function useAppleRemote(
       if (touchpadVisualReleaseTimerRef.current !== null) {
         window.clearTimeout(touchpadVisualReleaseTimerRef.current);
         touchpadVisualReleaseTimerRef.current = null;
+      }
+      if (touchpadRingReleaseTimerRef.current !== null) {
+        window.clearTimeout(touchpadRingReleaseTimerRef.current);
+        touchpadRingReleaseTimerRef.current = null;
       }
       visualHoldTimersRef.current.forEach((timerId) => {
         window.clearTimeout(timerId);
@@ -2064,6 +2070,10 @@ export function useAppleRemote(
           touchpadPressLockKeysRef.current.delete(pressLockKey);
         } else {
           touchpadPressLockKeysRef.current.set(pressLockKey, Date.now());
+          if (touchpadRingReleaseTimerRef.current !== null) {
+            window.clearTimeout(touchpadRingReleaseTimerRef.current);
+            touchpadRingReleaseTimerRef.current = null;
+          }
           touchpadCursorStateRef.current = null;
         }
       }
@@ -2477,6 +2487,10 @@ export function useAppleRemote(
       );
 
       if (!deviceId) {
+        if (touchpadRingReleaseTimerRef.current !== null) {
+          window.clearTimeout(touchpadRingReleaseTimerRef.current);
+          touchpadRingReleaseTimerRef.current = null;
+        }
         touchpadCursorStateRef.current = null;
         clearTouchpadVisual();
         return;
@@ -2498,6 +2512,25 @@ export function useAppleRemote(
         const currentState = touchpadCursorStateRef.current;
         if (
           currentState?.deviceId === deviceId &&
+          currentState.ringScrollLocked
+        ) {
+          if (touchpadRingReleaseTimerRef.current === null) {
+            const heldState = currentState;
+            touchpadRingReleaseTimerRef.current = window.setTimeout(() => {
+              touchpadRingReleaseTimerRef.current = null;
+              if (touchpadCursorStateRef.current !== heldState) {
+                return;
+              }
+
+              void window.mouseSimulator?.endPointerAssistGesture?.();
+              touchpadCursorStateRef.current = null;
+            }, TOUCHPAD_RING_RELEASE_GRACE_MS);
+          }
+          return;
+        }
+
+        if (
+          currentState?.deviceId === deviceId &&
           currentState.touchId === input.touchId
         ) {
           void window.mouseSimulator?.endPointerAssistGesture?.();
@@ -2507,15 +2540,25 @@ export function useAppleRemote(
       }
 
       const previousState = touchpadCursorStateRef.current;
+      const isResumingLockedScroll = Boolean(
+        touchpadRingReleaseTimerRef.current !== null &&
+          previousState?.deviceId === deviceId &&
+          previousState.ringScrollLocked
+      );
+      if (touchpadRingReleaseTimerRef.current !== null) {
+        window.clearTimeout(touchpadRingReleaseTimerRef.current);
+        touchpadRingReleaseTimerRef.current = null;
+      }
       const isSameTouch =
         previousState?.deviceId === deviceId &&
         previousState.touchId === input.touchId &&
         input.frame > previousState.frame;
+      const continuesGesture = isSameTouch || isResumingLockedScroll;
       const gestureZone = getClickpadGestureZone(
         input.x,
         input.y,
-        isSameTouch ? previousState.gestureZone : undefined,
-        isSameTouch ? previousState.ringScrollLocked : false
+        continuesGesture ? previousState?.gestureZone : undefined,
+        continuesGesture ? previousState?.ringScrollLocked : false
       );
       updateTouchpadVisual(deviceId, input, gestureZone);
 
@@ -2537,8 +2580,15 @@ export function useAppleRemote(
         gestureZone,
         clockwiseAngle: getClickpadClockwiseAngle(input.x, input.y),
         ringScrollLocked:
-          isSameTouch && previousState ? previousState.ringScrollLocked : false,
+          continuesGesture && previousState
+            ? previousState.ringScrollLocked
+            : false,
       };
+
+      if (isResumingLockedScroll && !isSameTouch) {
+        touchpadCursorStateRef.current = nextState;
+        return;
+      }
 
       if (
         !previousState ||
@@ -3088,6 +3138,10 @@ export function useAppleRemote(
     if (touchpadVisualReleaseTimerRef.current !== null) {
       window.clearTimeout(touchpadVisualReleaseTimerRef.current);
       touchpadVisualReleaseTimerRef.current = null;
+    }
+    if (touchpadRingReleaseTimerRef.current !== null) {
+      window.clearTimeout(touchpadRingReleaseTimerRef.current);
+      touchpadRingReleaseTimerRef.current = null;
     }
 
     deviceRefs.current.clear();

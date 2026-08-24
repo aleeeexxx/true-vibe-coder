@@ -119,6 +119,39 @@ let pointerAssistActionCandidateRoles = Set([
 ])
 
 let pointerAssistMode = CommandLine.arguments.contains("--pointer-assist")
+var pixelScrollGestureActive = false
+var pixelScrollEndWorkItem: DispatchWorkItem?
+let pixelScrollEndDelay: TimeInterval = 0.14
+let pixelScrollEventSource = CGEventSource(stateID: .hidSystemState)
+
+func createPixelScrollEvent(deltaY: Double, phase: Int64) -> CGEvent? {
+  let wheelDelta = Int32((-deltaY).rounded())
+  guard let event = CGEvent(
+    scrollWheelEvent2Source: pixelScrollEventSource,
+    units: .pixel,
+    wheelCount: 1,
+    wheel1: wheelDelta,
+    wheel2: 0,
+    wheel3: 0
+  ) else {
+    return nil
+  }
+
+  event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+  event.setIntegerValueField(.scrollWheelEventScrollPhase, value: phase)
+  event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: 0)
+  return event
+}
+
+func endPixelScrollGesture() {
+  guard pixelScrollGestureActive else {
+    return
+  }
+
+  createPixelScrollEvent(deltaY: 0, phase: 4)?.post(tap: .cghidEventTap)
+  pixelScrollGestureActive = false
+  pixelScrollEndWorkItem = nil
+}
 
 func postPixelScroll(deltaY: Double) {
   let clampedDelta = max(-240, min(240, deltaY))
@@ -126,20 +159,23 @@ func postPixelScroll(deltaY: Double) {
     return
   }
 
-  let wheelDelta = Int32((-clampedDelta).rounded())
-  guard let event = CGEvent(
-    scrollWheelEvent2Source: CGEventSource(stateID: .hidSystemState),
-    units: .pixel,
-    wheelCount: 1,
-    wheel1: wheelDelta,
-    wheel2: 0,
-    wheel3: 0
-  ) else {
+  let phase: Int64 = pixelScrollGestureActive ? 2 : 1
+  guard let event = createPixelScrollEvent(deltaY: clampedDelta, phase: phase) else {
     return
   }
 
-  event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+  pixelScrollEndWorkItem?.cancel()
   event.post(tap: .cghidEventTap)
+  pixelScrollGestureActive = true
+
+  let endWorkItem = DispatchWorkItem {
+    endPixelScrollGesture()
+  }
+  pixelScrollEndWorkItem = endWorkItem
+  DispatchQueue.main.asyncAfter(
+    deadline: .now() + pixelScrollEndDelay,
+    execute: endWorkItem
+  )
 }
 
 func startCommandInput() {
