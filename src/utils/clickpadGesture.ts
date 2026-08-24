@@ -1,7 +1,7 @@
 export type ClickpadGestureZone = "pointer" | "ring";
 
-const RING_ENTER_RADIUS = 0.35;
-const RING_EXIT_RADIUS = 0.31;
+const RING_ENTER_RADIUS = 0.3;
+const RING_EXIT_RADIUS = 0.26;
 const MIN_RING_ANGLE_DELTA = 0.003;
 const MAX_RING_ANGLE_DELTA = 0.55;
 const RING_SCROLL_PIXELS_PER_RADIAN = 310;
@@ -13,8 +13,13 @@ function clamp(value: number, min: number, max: number): number {
 export function getClickpadGestureZone(
   x: number,
   y: number,
-  previousZone?: ClickpadGestureZone
+  previousZone?: ClickpadGestureZone,
+  ringScrollLocked = false
 ): ClickpadGestureZone {
+  if (ringScrollLocked) {
+    return "ring";
+  }
+
   const radius = Math.hypot(x - 0.5, y - 0.5);
 
   if (previousZone === "ring") {

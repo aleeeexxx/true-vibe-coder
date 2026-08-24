@@ -15,11 +15,16 @@ describe("clickpad gesture zones", () => {
   it("uses the outer ring for circular scrolling", () => {
     expect(getClickpadGestureZone(0.5, 0.92)).toBe("ring");
     expect(getClickpadGestureZone(0.92, 0.5)).toBe("ring");
+    expect(getClickpadGestureZone(0.81, 0.5)).toBe("ring");
   });
 
   it("keeps the active zone stable near the boundary", () => {
-    expect(getClickpadGestureZone(0.83, 0.5, "pointer")).toBe("pointer");
-    expect(getClickpadGestureZone(0.83, 0.5, "ring")).toBe("ring");
+    expect(getClickpadGestureZone(0.78, 0.5, "pointer")).toBe("pointer");
+    expect(getClickpadGestureZone(0.78, 0.5, "ring")).toBe("ring");
+  });
+
+  it("keeps scrolling locked even when the finger drifts into the center", () => {
+    expect(getClickpadGestureZone(0.55, 0.5, "ring", true)).toBe("ring");
   });
 });
 
