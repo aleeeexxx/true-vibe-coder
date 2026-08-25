@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accumulateClickpadRingScroll,
   getClickpadClockwiseAngle,
   getClickpadClockwiseDelta,
   getClickpadGestureZone,
@@ -51,5 +52,21 @@ describe("clickpad ring scrolling", () => {
     const previous = Math.PI - 0.04;
     const current = -Math.PI + 0.05;
     expect(getClickpadClockwiseDelta(previous, current)).toBeCloseTo(0.09, 5);
+  });
+
+  it("accumulates small movements instead of dropping slow rotation", () => {
+    const first = accumulateClickpadRingScroll(0, 0.0012);
+    const second = accumulateClickpadRingScroll(first.angleRemainder, 0.0012);
+    const third = accumulateClickpadRingScroll(second.angleRemainder, 0.0012);
+
+    expect(first.pixels).toBe(0);
+    expect(second.pixels).toBe(0);
+    expect(third.pixels).toBeGreaterThan(0);
+    expect(third.angleRemainder).toBe(0);
+  });
+
+  it("keeps scrolling after a delayed sample instead of dropping the frame", () => {
+    expect(getClickpadRingScrollPixels(0.7)).toBe(170);
+    expect(getClickpadRingScrollPixels(-0.7)).toBe(-170);
   });
 });

@@ -10,10 +10,10 @@ import {
   PointerRotation,
 } from "../utils/pointerRotation";
 import {
+  accumulateClickpadRingScroll,
   getClickpadClockwiseAngle,
   getClickpadClockwiseDelta,
   getClickpadGestureZone,
-  getClickpadRingScrollPixels,
   type ClickpadGestureZone,
 } from "../utils/clickpadGesture";
 
@@ -43,7 +43,7 @@ const DIRECTION_NUDGE_REPEAT_INITIAL_DELAY_MS = 280;
 const DIRECTION_NUDGE_REPEAT_MAX_INTERVAL_MS = 70;
 const DIRECTION_NUDGE_REPEAT_MIN_INTERVAL_MS = 34;
 const TOUCHPAD_VISUAL_RELEASE_MS = 140;
-const TOUCHPAD_RING_RELEASE_GRACE_MS = 140;
+const TOUCHPAD_RING_RELEASE_GRACE_MS = 280;
 const TOUCHPAD_MIN_DELTA = 0.001;
 const TOUCHPAD_MAX_DELTA = 0.35;
 const TOUCHPAD_PRESS_LOCK_STALE_MS = 1800;
@@ -453,6 +453,7 @@ type TouchpadCursorState = {
   y: number;
   gestureZone: ClickpadGestureZone;
   clockwiseAngle: number;
+  ringAngleRemainder: number;
   ringScrollLocked: boolean;
 };
 
@@ -2551,8 +2552,7 @@ export function useAppleRemote(
       }
       const isSameTouch =
         previousState?.deviceId === deviceId &&
-        previousState.touchId === input.touchId &&
-        input.frame > previousState.frame;
+        previousState.touchId === input.touchId;
       const continuesGesture = isSameTouch || isResumingLockedScroll;
       const gestureZone = getClickpadGestureZone(
         input.x,
@@ -2579,6 +2579,10 @@ export function useAppleRemote(
         y: input.y,
         gestureZone,
         clockwiseAngle: getClickpadClockwiseAngle(input.x, input.y),
+        ringAngleRemainder:
+          continuesGesture && previousState
+            ? previousState.ringAngleRemainder
+            : 0,
         ringScrollLocked:
           continuesGesture && previousState
             ? previousState.ringScrollLocked
@@ -2593,8 +2597,7 @@ export function useAppleRemote(
       if (
         !previousState ||
         previousState.deviceId !== deviceId ||
-        previousState.touchId !== input.touchId ||
-        input.frame <= previousState.frame
+        previousState.touchId !== input.touchId
       ) {
         touchpadCursorStateRef.current = nextState;
         return;
@@ -2614,11 +2617,16 @@ export function useAppleRemote(
           previousState.clockwiseAngle,
           nextState.clockwiseAngle
         );
-        const scrollPixels = getClickpadRingScrollPixels(angleDelta);
-        if (scrollPixels !== 0) {
+        const scroll = accumulateClickpadRingScroll(
+          previousState.ringAngleRemainder,
+          angleDelta
+        );
+        nextState.ringAngleRemainder = scroll.angleRemainder;
+        touchpadCursorStateRef.current = nextState;
+        if (scroll.pixels !== 0) {
           nextState.ringScrollLocked = true;
           touchpadCursorStateRef.current = nextState;
-          scrollTouchpad(deviceId, scrollPixels);
+          scrollTouchpad(deviceId, scroll.pixels);
         }
         return;
       }

@@ -42,12 +42,28 @@ export function getClickpadClockwiseDelta(
 }
 
 export function getClickpadRingScrollPixels(angleDelta: number): number {
-  if (
-    Math.abs(angleDelta) < MIN_RING_ANGLE_DELTA ||
-    Math.abs(angleDelta) > MAX_RING_ANGLE_DELTA
-  ) {
+  if (Math.abs(angleDelta) < MIN_RING_ANGLE_DELTA) {
     return 0;
   }
 
-  return clamp(angleDelta * RING_SCROLL_PIXELS_PER_RADIAN, -170, 170);
+  const boundedDelta = clamp(
+    angleDelta,
+    -MAX_RING_ANGLE_DELTA,
+    MAX_RING_ANGLE_DELTA
+  );
+  return clamp(boundedDelta * RING_SCROLL_PIXELS_PER_RADIAN, -170, 170);
+}
+
+export function accumulateClickpadRingScroll(
+  previousAngleRemainder: number,
+  angleDelta: number
+): { pixels: number; angleRemainder: number } {
+  const accumulatedDelta = previousAngleRemainder + angleDelta;
+  const pixels = getClickpadRingScrollPixels(accumulatedDelta);
+
+  if (pixels === 0) {
+    return { pixels: 0, angleRemainder: accumulatedDelta };
+  }
+
+  return { pixels, angleRemainder: 0 };
 }

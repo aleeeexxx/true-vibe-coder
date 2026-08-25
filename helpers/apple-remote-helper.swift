@@ -121,7 +121,7 @@ let pointerAssistActionCandidateRoles = Set([
 let pointerAssistMode = CommandLine.arguments.contains("--pointer-assist")
 var pixelScrollGestureActive = false
 var pixelScrollEndWorkItem: DispatchWorkItem?
-let pixelScrollEndDelay: TimeInterval = 0.14
+let pixelScrollEndDelay: TimeInterval = 0.34
 let pixelScrollEventSource = CGEventSource(stateID: .hidSystemState)
 
 func createPixelScrollEvent(deltaY: Double, phase: Int64) -> CGEvent? {
