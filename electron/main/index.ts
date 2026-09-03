@@ -31,7 +31,7 @@ import {
 } from "./pointerAssistClickRegion";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const APP_NAME = "ture vibe coder";
+const APP_NAME = "True Vibe Coder";
 const execFileAsync = promisify(execFile);
 
 // The built directory structure
@@ -70,6 +70,7 @@ if (process.platform === "darwin") {
 
   if (!existsSync(userDataPath)) {
     for (const legacyName of [
+      "ture vibe coder",
       "True White Color",
       "Lounge Control",
     ]) {
@@ -758,7 +759,9 @@ function createWindow() {
     height: 960,
     minWidth: 1180,
     minHeight: 720,
-    backgroundColor: "#edf2f0",
+    backgroundColor: "#06080a",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 14, y: 14 },
     icon: path.join(process.env.VITE_PUBLIC, "icon.png"),
     show: true,
     skipTaskbar: false,
@@ -2921,7 +2924,7 @@ let tray = null;
 function createTray() {
   const trayIconPath = path.join(
     process.env.VITE_PUBLIC,
-    "tureVibeCoderTemplate.png"
+    "trueVibeCoderTemplate.png"
   );
   const image = nativeImage.createFromPath(trayIconPath);
   image.setTemplateImage(true);

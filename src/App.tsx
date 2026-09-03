@@ -268,9 +268,9 @@ function App() {
         <main className="visualization-panel">
           {selectedAppleRemote && (
             <>
-              <div className="panel-header">
+              <div className="panel-header workspace-header">
                 <div className="panel-title-group">
-                  <span className="panel-kicker">Remote workspace</span>
+                  <span className="panel-kicker">Remote in focus</span>
                   <h2>{selectedAppleRemote.name}</h2>
                   <p className="panel-subtitle">
                     {selectedAppleRemote.modelInfo.generationLabel} ·{" "}
@@ -278,7 +278,7 @@ function App() {
                   </p>
                 </div>
                 <div className="panel-status is-live">
-                  <CircleCheck size={14} /> Live on this Mac
+                  <CircleCheck size={14} /> Input live
                 </div>
               </div>
               <div className="visualization-content">
@@ -296,9 +296,9 @@ function App() {
 
           {selectedMediaRemote && (
             <>
-              <div className="panel-header">
+              <div className="panel-header workspace-header">
                 <div className="panel-title-group">
-                  <span className="panel-kicker">Headset control</span>
+                  <span className="panel-kicker">Media control in focus</span>
                   <h2>{selectedMediaRemote.name}</h2>
                   <p className="panel-subtitle">Bluetooth AVRCP · Play / Pause</p>
                 </div>
@@ -321,25 +321,37 @@ function App() {
           )}
 
           {!selectedAppleRemote && !selectedMediaRemote && (
-            <div className="selection-empty-state">
-              <div className="selection-empty-copy">
-                <div className="empty-state-icon"><Sofa size={30} strokeWidth={1.4} /></div>
-                <h1>Your remote workspace is quiet</h1>
-                <p>Connect a remote from the sidebar.</p>
+            <>
+              <div className="panel-header workspace-header">
+                <div className="panel-title-group">
+                  <span className="panel-kicker">Remote workspace</span>
+                  <h2>No active input</h2>
+                  <p className="panel-subtitle">Waiting for a remote or headset</p>
+                </div>
+                <div className="panel-status">Standby</div>
               </div>
-              <PointerAssistTestPad
-                pointerAssistConfig={pointerAssistConfig}
-                pointerAssistState={pointerAssistState}
-              />
-            </div>
+              <div className="visualization-content">
+                <div className="selection-empty-state">
+                  <div className="selection-empty-copy">
+                    <div className="empty-state-icon"><Sofa size={30} strokeWidth={1.4} /></div>
+                    <h1>Settle in. Take control.</h1>
+                    <p>Choose an input source to work from across the room.</p>
+                  </div>
+                  <PointerAssistTestPad
+                    pointerAssistConfig={pointerAssistConfig}
+                    pointerAssistState={pointerAssistState}
+                  />
+                </div>
+              </div>
+            </>
           )}
         </main>
 
         <aside className="mapping-panel">
-          <div className="panel-header">
+          <div className="panel-header inspector-header">
             <div className="panel-title-group compact">
-              <span className="panel-kicker">Control inspector</span>
-              <h2>Controls</h2>
+              <span className="panel-kicker">Actions</span>
+              <h2>Control mappings</h2>
               <p className="panel-subtitle">
                 {selectedAppleRemote
                   ? `${selectedAppleRemote.name} · Ready`

@@ -1,6 +1,6 @@
-# ture vibe coder
+# True Vibe Coder
 
-ture vibe coder turns an Apple TV Remote into a relaxed macOS input surface for keyboard shortcuts, pointer movement, scrolling, and small-target snapping. It is designed for light work, coding, and media control from a sofa or across the room.
+True Vibe Coder turns an Apple TV Remote into a relaxed macOS input surface for keyboard shortcuts, pointer movement, scrolling, and small-target snapping. It is designed for light work, coding, and media control from a sofa or across the room.
 
 ## Highlights
 
@@ -13,9 +13,9 @@ ture vibe coder turns an Apple TV Remote into a relaxed macOS input surface for 
 
 ## Remote handoff
 
-The physical Apple TV Remote does not provide AirPods-style automatic switching between Mac and Apple TV. Use **Release for Apple TV** in ture vibe coder before pairing it to Apple TV. To return it to Apple TV, place it close to the Apple TV and hold Back and Volume Up for five seconds.
+The physical Apple TV Remote does not provide AirPods-style automatic switching between Mac and Apple TV. Use **Release for Apple TV** in True Vibe Coder before pairing it to Apple TV. To return it to Apple TV, place it close to the Apple TV and hold Back and Volume Up for five seconds.
 
-To return it to the Mac, open System Settings → Bluetooth, then temporarily unplug the Apple TV or move the remote out of its range. On a silver second- or third-generation remote, hold Back and Volume Up for five seconds. On a black first-generation remote, hold Menu and Volume Up. Choose Connect when the remote appears, then return to ture vibe coder and choose Refresh or Connect Remote. Apple officially documents pairing this remote with Apple TV; using it as a Mac input is an unofficial workflow.
+To return it to the Mac, open System Settings → Bluetooth, then temporarily unplug the Apple TV or move the remote out of its range. On a silver second- or third-generation remote, hold Back and Volume Up for five seconds. On a black first-generation remote, hold Menu and Volume Up. Choose Connect when the remote appears, then return to True Vibe Coder and choose Refresh or Connect Remote. Apple officially documents pairing this remote with Apple TV; using it as a Mac input is an unofficial workflow.
 
 ## Development
 

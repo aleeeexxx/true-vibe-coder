@@ -6,7 +6,7 @@
     <true/>
     <key>com.apple.security.application-groups</key>
     <array>
-      <string>group.com.turevibecoder.mac</string>
+      <string>group.com.truevibecoder.mac</string>
     </array>
     <key>com.apple.security.device.audio-input</key>
     <true/>

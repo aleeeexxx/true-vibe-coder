@@ -11,9 +11,9 @@ import {
 } from "../utils/pointerRotation";
 import {
   accumulateClickpadRingScroll,
-  getClickpadClockwiseAngle,
-  getClickpadClockwiseDelta,
+  getClickpadClockwiseDeltaFromPoints,
   getClickpadGestureZone,
+  isTrackableClickpadContact,
   type ClickpadGestureZone,
 } from "../utils/clickpadGesture";
 
@@ -452,7 +452,6 @@ type TouchpadCursorState = {
   x: number;
   y: number;
   gestureZone: ClickpadGestureZone;
-  clockwiseAngle: number;
   ringAngleRemainder: number;
   ringScrollLocked: boolean;
 };
@@ -2502,15 +2501,27 @@ export function useAppleRemote(
       );
       const cursorMapping =
         mapping?.cursorMapping ?? createDefaultTouchpadCursorMapping();
+      const currentState = touchpadCursorStateRef.current;
+      const continuesLockedRingContact = Boolean(
+        currentState?.deviceId === deviceId &&
+          currentState.touchId === input.touchId &&
+          currentState.ringScrollLocked &&
+          isTrackableClickpadContact(
+            input.state,
+            input.x,
+            input.y,
+            input.size
+          )
+      );
 
       if (
         !isActiveTouchpadState(
           input,
           cursorMapping.touchpadContactSensitivity
-        )
+        ) &&
+        !continuesLockedRingContact
       ) {
         clearTouchpadVisual(deviceId);
-        const currentState = touchpadCursorStateRef.current;
         if (
           currentState?.deviceId === deviceId &&
           currentState.ringScrollLocked
@@ -2578,7 +2589,6 @@ export function useAppleRemote(
         x: input.x,
         y: input.y,
         gestureZone,
-        clockwiseAngle: getClickpadClockwiseAngle(input.x, input.y),
         ringAngleRemainder:
           continuesGesture && previousState
             ? previousState.ringAngleRemainder
@@ -2613,9 +2623,11 @@ export function useAppleRemote(
       }
 
       if (gestureZone === "ring") {
-        const angleDelta = getClickpadClockwiseDelta(
-          previousState.clockwiseAngle,
-          nextState.clockwiseAngle
+        const angleDelta = getClickpadClockwiseDeltaFromPoints(
+          previousState.x,
+          previousState.y,
+          nextState.x,
+          nextState.y
         );
         const scroll = accumulateClickpadRingScroll(
           previousState.ringAngleRemainder,

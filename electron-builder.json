@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.turevibecoder.mac",
+  "appId": "com.truevibecoder.mac",
   "asar": true,
   "directories": {
     "output": "release/${version}"
@@ -66,7 +66,7 @@
   "publish": {
     "provider": "github",
     "owner": "aleeeexxx",
-    "repo": "ture-vibe-coder",
+    "repo": "true-vibe-coder",
     "releaseType": "release"
   }
 }

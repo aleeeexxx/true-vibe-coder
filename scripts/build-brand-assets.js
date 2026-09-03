@@ -7,19 +7,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 if (process.platform !== "darwin") {
-  console.log("Skipping ture vibe coder asset generation outside macOS.");
+  console.log("Skipping True Vibe Coder asset generation outside macOS.");
   process.exit(0);
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const buildDir = path.join(root, "build");
 const publicDir = path.join(root, "public");
-const appIconSvg = path.join(buildDir, "ture-vibe-coder-icon.svg");
-const trayIconSvg = path.join(buildDir, "ture-vibe-coder-tray.svg");
+const appIconSvg = path.join(buildDir, "true-vibe-coder-icon.svg");
+const trayIconSvg = path.join(buildDir, "true-vibe-coder-tray.svg");
 const appIconPng = path.join(buildDir, "icon.png");
-const tray1x = path.join(publicDir, "tureVibeCoderTemplate.png");
-const tray2x = path.join(publicDir, "tureVibeCoderTemplate@2x.png");
-const temporaryDir = mkdtempSync(path.join(os.tmpdir(), "ture-vibe-coder-assets-"));
+const tray1x = path.join(publicDir, "trueVibeCoderTemplate.png");
+const tray2x = path.join(publicDir, "trueVibeCoderTemplate@2x.png");
+const temporaryDir = mkdtempSync(path.join(os.tmpdir(), "true-vibe-coder-assets-"));
 
 function sips(...args) {
   execFileSync("sips", args, { stdio: "ignore" });
@@ -38,7 +38,7 @@ try {
   sips("-s", "format", "ico", icoSource, "--out", path.join(buildDir, "icon.ico"));
   cpSync(path.join(buildDir, "icon.ico"), path.join(publicDir, "favicon.ico"));
 
-  const iconset = path.join(temporaryDir, "TureVibeCoder.iconset");
+  const iconset = path.join(temporaryDir, "TrueVibeCoder.iconset");
   mkdirSync(iconset);
   for (const [name, size] of [
     ["icon_16x16.png", 16],
@@ -59,7 +59,7 @@ try {
   sips("-s", "format", "png", trayIconSvg, "--out", tray2x);
   sips("-z", "16", "16", tray2x, "--out", tray1x);
 
-  console.log("Built ture vibe coder app and menu bar assets.");
+  console.log("Built True Vibe Coder app and menu bar assets.");
 } finally {
   rmSync(temporaryDir, { recursive: true, force: true });
 }

@@ -44,9 +44,9 @@ export function DeviceList({
         <div className="brand-mark" aria-hidden="true">
           <Radio size={18} strokeWidth={1.8} />
         </div>
-        <div>
-          <div className="brand-name">ture vibe coder</div>
-          <div className="brand-tagline">Code from wherever the vibe is right.</div>
+        <div className="brand-copy">
+          <div className="brand-name">True Vibe Coder</div>
+          <div className="brand-tagline">Remote work, comfortably.</div>
         </div>
       </div>
 
@@ -56,7 +56,7 @@ export function DeviceList({
           <span
             className={`session-state ${remoteIsConnected ? "is-live" : ""}`}
           >
-            {remoteIsConnected ? "Live" : isAppleRemoteSessionActive ? "Ready" : "Released"}
+            {remoteIsConnected ? "Connected" : isAppleRemoteSessionActive ? "Ready" : "Released"}
           </span>
         </div>
 
@@ -84,7 +84,7 @@ export function DeviceList({
             ))}
             <button className="release-remote-button" onClick={onReleaseAppleRemote}>
               <Unplug size={15} strokeWidth={1.9} />
-              Release for Apple TV
+              Release to Apple TV
             </button>
           </>
         ) : (
@@ -115,7 +115,7 @@ export function DeviceList({
         )}
 
         <div className="device-section-heading headset-section-heading">
-          <span>Headset controls</span>
+          <span>Headset</span>
           <span className={`session-state ${isMediaRemoteCaptureEnabled ? "is-live" : ""}`}>
             {mediaRemotes.length > 0 ? (isMediaRemoteCaptureEnabled ? "Mapped" : "Ready") : "0"}
           </span>
@@ -158,7 +158,7 @@ export function DeviceList({
       </div>
 
       <div className="sidebar-footnote">
-        ture vibe coder stays available when this window is closed.
+        Runs quietly from the menu bar when this window is closed.
       </div>
     </aside>
   );

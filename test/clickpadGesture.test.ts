@@ -3,8 +3,10 @@ import {
   accumulateClickpadRingScroll,
   getClickpadClockwiseAngle,
   getClickpadClockwiseDelta,
+  getClickpadClockwiseDeltaFromPoints,
   getClickpadGestureZone,
   getClickpadRingScrollPixels,
+  isTrackableClickpadContact,
 } from "../src/utils/clickpadGesture";
 
 describe("clickpad gesture zones", () => {
@@ -52,6 +54,60 @@ describe("clickpad ring scrolling", () => {
     const previous = Math.PI - 0.04;
     const current = -Math.PI + 0.05;
     expect(getClickpadClockwiseDelta(previous, current)).toBeCloseTo(0.09, 5);
+  });
+
+  it("keeps a continuous delta while crossing the left side", () => {
+    const delta = getClickpadClockwiseDeltaFromPoints(
+      0.05,
+      0.54,
+      0.05,
+      0.46
+    );
+
+    expect(delta).toBeLessThan(0);
+    expect(Math.abs(delta)).toBeCloseTo(0.177, 2);
+  });
+
+  it("crosses the absolute-angle seam without losing movement", () => {
+    const delta = getClickpadClockwiseDeltaFromPoints(
+      0.54,
+      0.05,
+      0.46,
+      0.05
+    );
+
+    expect(delta).toBeGreaterThan(0);
+    expect(Math.abs(delta)).toBeCloseTo(0.177, 2);
+  });
+
+  it("keeps every sample moving in the same direction for a full turn", () => {
+    const points = Array.from({ length: 73 }, (_, index) => {
+      const angle = (index * Math.PI * 2) / 72;
+      return {
+        x: 0.5 + Math.sin(angle) * 0.45,
+        y: 0.5 + Math.cos(angle) * 0.45,
+      };
+    });
+
+    for (let index = 1; index < points.length; index += 1) {
+      const previous = points[index - 1];
+      const current = points[index];
+      const delta = getClickpadClockwiseDeltaFromPoints(
+        previous.x,
+        previous.y,
+        current.x,
+        current.y
+      );
+
+      expect(delta).toBeGreaterThan(0);
+      expect(getClickpadRingScrollPixels(delta)).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps low-pressure ring contact trackable after ring lock", () => {
+    expect(isTrackableClickpadContact(4, 0.05, 0.5, 0.02)).toBe(true);
+    expect(isTrackableClickpadContact(4, 0.05, 0.5, 0)).toBe(false);
+    expect(isTrackableClickpadContact(0, 0.05, 0.5, 0.2)).toBe(false);
   });
 
   it("accumulates small movements instead of dropping slow rotation", () => {

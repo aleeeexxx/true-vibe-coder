@@ -199,7 +199,7 @@ private func createSilentWaveFile() throws -> URL {
   wave.append(Data(count: Int(dataSize)))
 
   let url = FileManager.default.temporaryDirectory
-    .appendingPathComponent("ture-vibe-coder-media-remote-silence.wav")
+    .appendingPathComponent("true-vibe-coder-media-remote-silence.wav")
   try wave.write(to: url, options: .atomic)
   return url
 }
@@ -226,7 +226,7 @@ final class MediaRemoteSession {
     let infoCenter = MPNowPlayingInfoCenter.default()
     infoCenter.nowPlayingInfo = [
       MPMediaItemPropertyTitle: "Headset Shortcut",
-      MPMediaItemPropertyArtist: "ture vibe coder",
+      MPMediaItemPropertyArtist: "True Vibe Coder",
       MPMediaItemPropertyPlaybackDuration: 86_400,
       MPNowPlayingInfoPropertyElapsedPlaybackTime: 0,
       MPNowPlayingInfoPropertyPlaybackRate: 1,

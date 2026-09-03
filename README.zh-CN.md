@@ -1,6 +1,6 @@
-# ture vibe coder
+# True Vibe Coder
 
-ture vibe coder 把 Apple TV Remote 变成一块轻松、低干扰的 macOS 输入界面，可映射快捷键、控制光标与滚动，并让光标吸附到较小的可访问性控件。产品定位是从沙发或房间另一侧完成轻量工作、编程和媒体控制。
+True Vibe Coder 把 Apple TV Remote 变成一块轻松、低干扰的 macOS 输入界面，可映射快捷键、控制光标与滚动，并让光标吸附到较小的可访问性控件。产品定位是从沙发或房间另一侧完成轻量工作、编程和媒体控制。
 
 ## 主要能力
 
@@ -13,9 +13,9 @@ ture vibe coder 把 Apple TV Remote 变成一块轻松、低干扰的 macOS 输�
 
 ## 在 Mac 与 Apple TV 之间切换
 
-Apple TV Remote 本身不支持 AirPods 式的自动设备切换。在 ture vibe coder 中先点“Release for Apple TV”。回到 Apple TV 时，把遥控器放在 Apple TV 附近，同时按住 Back 和 Volume Up 五秒。
+Apple TV Remote 本身不支持 AirPods 式的自动设备切换。在 True Vibe Coder 中先点“Release for Apple TV”。回到 Apple TV 时，把遥控器放在 Apple TV 附近，同时按住 Back 和 Volume Up 五秒。
 
-回到 Mac 时，先打开“系统设置 → 蓝牙”，暂时断开 Apple TV 电源，或把遥控器带离其接收范围。银色第二、三代遥控器同时按住 Back 和 Volume Up 五秒；黑色第一代使用 Menu 和 Volume Up。遥控器出现在附近设备后点“连接”，再回到 ture vibe coder 点“Refresh”或“Connect Remote”。Apple 官方只明确支持这款遥控器与 Apple TV 配对，把它用作 Mac 输入设备属于非官方流程。
+回到 Mac 时，先打开“系统设置 → 蓝牙”，暂时断开 Apple TV 电源，或把遥控器带离其接收范围。银色第二、三代遥控器同时按住 Back 和 Volume Up 五秒；黑色第一代使用 Menu 和 Volume Up。遥控器出现在附近设备后点“连接”，再回到 True Vibe Coder 点“Refresh”或“Connect Remote”。Apple 官方只明确支持这款遥控器与 Apple TV 配对，把它用作 Mac 输入设备属于非官方流程。
 
 ## 开发
 

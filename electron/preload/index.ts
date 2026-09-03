@@ -220,7 +220,7 @@ function createLoadingSurface() {
 
   overlay.className = 'app-loading-wrap'
   overlay.setAttribute('role', 'status')
-  overlay.setAttribute('aria-label', 'Opening ture vibe coder')
+  overlay.setAttribute('aria-label', 'Opening True Vibe Coder')
   overlay.innerHTML = `
     <div class="vibe-loader" aria-hidden="true">
       <div class="vibe-loader__remote"></div>
