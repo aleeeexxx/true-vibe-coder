@@ -32,9 +32,9 @@ True Vibe Coder 是一款 macOS 工具，让你可以从沙发、桌边或房间
 
 ### 映射遥控器按键
 
-![把 Apple TV Remote 按键映射为快捷键、长按、鼠标点击和应用命令](docs/images/mapping.png)
+![把 Apple TV Remote 按键映射为快捷键、长按、鼠标点击和 Magnetic Cursor 开关](docs/images/mapping.png)
 
-学习一个物理按键后，可以给它分配单键、组合键、鼠标点击或专用命令。长按动作会保持正确的修饰键释放时序，适配依赖 key-up 顺序的快捷键；遥控器预览也会同时显示已保存动作和实时输入反馈。
+学习一个物理按键后，可以给它分配单键、组合键、鼠标点击或内置的 Magnetic Cursor 开关。长按动作会保持正确的修饰键释放时序，适配依赖 key-up 顺序的快捷键；遥控器预览也会同时显示已保存动作和实时输入反馈。
 
 ### 用触控面移动和滚动
 
@@ -54,7 +54,7 @@ Magnetic Cursor 使用 macOS 辅助功能信息识别较小控件。光标接近
 - 内圈光标移动与外圈连续滚动
 - 针对 macOS 辅助功能所暴露的小型控件进行磁吸辅助
 - 与遥控器型号对应的实时按键和触控反馈
-- 持久化遥控器映射和蓝牙耳机媒体键映射
+- 持久化遥控器映射，并可选捕获系统 Play/Pause 命令来触发快捷键
 - 关闭主窗口后继续驻留菜单栏
 - **Release to Apple TV** 会在交还设备前关闭 HID 访问
 
@@ -76,16 +76,18 @@ Apple 官方只明确说明了遥控器与 Apple TV 的配对流程。把它作�
 
 - Magnetic Cursor 依赖 macOS 辅助功能树。自绘或没有正确暴露辅助功能信息的控件可能无法成为磁吸目标。
 - 蓝牙连接归属仍由遥控器与操作系统管理。True Vibe Coder 可以释放自己的 HID 访问，但无法给遥控器增加自动设备切换能力。
+- macOS 会把 Play/Pause 暴露为系统级媒体命令。耳机覆盖开启时，其他输入设备上的同类媒体键也可能触发映射的快捷键。
 - 当前键盘与光标输出只支持 macOS。
 
 ## 从源码构建
 
 ```bash
 npm install
+node scripts/build-apple-remote-helper.js
 npm run dev
 ```
 
-构建原生 helper 和桌面应用：
+编译 helper 需要 Xcode Command Line Tools。构建原生 helper 和桌面应用：
 
 ```bash
 npm run build

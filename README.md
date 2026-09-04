@@ -32,9 +32,9 @@ True Vibe Coder is a macOS utility for controlling a computer from a sofa, desk 
 
 ### Map the remote
 
-![Map Apple TV Remote buttons to shortcuts, hold actions, clicks, and app commands](docs/images/mapping.png)
+![Map Apple TV Remote buttons to shortcuts, hold actions, clicks, and the Magnetic Cursor toggle](docs/images/mapping.png)
 
-Learn a physical button, then assign a key, modifier chord, mouse click, or dedicated command. Press and hold behavior preserves modifier timing for shortcuts that depend on the key-up sequence, and the remote preview shows both the saved action and live input.
+Learn a physical button, then assign a key, modifier chord, mouse click, or the built-in Magnetic Cursor toggle. Press and hold behavior preserves modifier timing for shortcuts that depend on the key-up sequence, and the remote preview shows both the saved action and live input.
 
 ### Use touch for pointer and scroll
 
@@ -54,7 +54,7 @@ Magnetic Cursor uses macOS Accessibility information to identify compact control
 - Inner-disc pointer movement and outer-ring continuous scrolling
 - Magnetic assistance for small controls exposed through macOS Accessibility
 - Live button and touch feedback on the matching remote preview
-- Persistent remote and Bluetooth headset media-button mappings
+- Persistent remote mappings and optional system Play/Pause shortcut capture
 - Menu bar availability after the main window is closed
 - A deliberate **Release to Apple TV** action that closes HID access before handoff
 
@@ -76,16 +76,18 @@ Choose **Release to Apple TV** before reconnecting the remote to an Apple TV. Pl
 
 - Magnetic Cursor depends on the macOS Accessibility tree. Custom-rendered or inaccessible controls may not expose a usable target.
 - Bluetooth ownership remains controlled by the remote and operating systems. True Vibe Coder can release its own HID access, but it cannot add automatic device switching to the remote.
+- macOS exposes Play/Pause as a system-wide media command. While headset override is active, the same media key from another input can also trigger the mapped shortcut.
 - Keyboard and pointer output are macOS-only in the current implementation.
 
 ## Build from source
 
 ```bash
 npm install
+node scripts/build-apple-remote-helper.js
 npm run dev
 ```
 
-Build the native helpers and desktop package with:
+The helper build requires Xcode Command Line Tools. Build the native helpers and desktop package with:
 
 ```bash
 npm run build
