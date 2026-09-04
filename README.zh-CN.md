@@ -95,4 +95,4 @@ Apple Remote 原生读取位于 `helpers/apple-remote-helper.swift`，渲染进�
 
 ## 许可
 
-MIT。原始版权声明与许可条款见 [LICENSE](LICENSE)。
+MIT。版权声明与许可条款见 [LICENSE](LICENSE)。

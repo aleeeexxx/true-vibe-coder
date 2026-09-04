@@ -95,4 +95,4 @@ The native Apple Remote helper lives in `helpers/apple-remote-helper.swift`. Ren
 
 ## License
 
-MIT. See [LICENSE](LICENSE) for the original copyright notice and terms.
+MIT. See [LICENSE](LICENSE) for the copyright notice and terms.
