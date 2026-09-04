@@ -106,6 +106,24 @@ function formatButtonMappingValue(buttonMapping: AppleRemoteButtonMapping): stri
     : buttonMapping.label;
 }
 
+function formatButtonMappingTrigger(
+  buttonMapping: AppleRemoteButtonMapping
+): string {
+  if (buttonMapping.trigger === "hold") {
+    return "HOLD";
+  }
+
+  if (buttonMapping.outputMode === "hold-modifiers") {
+    return "PRESS · HOLD MODIFIERS";
+  }
+
+  if (buttonMapping.outputMode === "hold") {
+    return "PRESS · HOLD OUTPUT";
+  }
+
+  return "PRESS";
+}
+
 async function openBluetoothSettings(): Promise<void> {
   await window.ipcRenderer?.invoke("open-bluetooth-settings");
 }
@@ -605,7 +623,13 @@ export function AppleRemotePanel({
             {buttonMappings.map((buttonMapping) => (
               <div key={buttonMapping.controlKey} className="mapping-item">
                 <div className="mapping-item-label">
-                  {formatAppleRemoteButtonControl(buttonMapping.control)}
+                  <span className="mapping-item-input-dot" aria-hidden="true" />
+                  <span className="mapping-item-label-copy">
+                    <strong>
+                      {formatAppleRemoteButtonControl(buttonMapping.control)}
+                    </strong>
+                    <small>{formatButtonMappingTrigger(buttonMapping)}</small>
+                  </span>
                 </div>
                 <div className="mapping-item-value">
                   <span className="mapped-key-small">

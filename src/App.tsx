@@ -347,23 +347,25 @@ function App() {
           )}
         </main>
 
-        <aside className="mapping-panel">
-          <div className="panel-header inspector-header">
-            <div className="panel-title-group compact">
-              <span className="panel-kicker">Actions</span>
-              <h2>Control mappings</h2>
-              <p className="panel-subtitle">
-                {selectedAppleRemote
-                  ? `${selectedAppleRemote.name} · Ready`
-                  : selectedMediaRemote
-                    ? `${selectedMediaRemote.name} · Media button`
-                    : "Choose an input to begin"}
-              </p>
+        <aside
+          className={`mapping-panel ${
+            selectedAppleRemote || selectedMediaRemote
+              ? "has-active-device"
+              : "is-awaiting-device"
+          }`}
+        >
+          {!selectedAppleRemote && !selectedMediaRemote && (
+            <div className="panel-header inspector-header">
+              <div className="panel-title-group compact">
+                <span className="panel-kicker">Actions</span>
+                <h2>Control mappings</h2>
+                <p className="panel-subtitle">Choose an input to begin</p>
+              </div>
+              <span className="inspector-header-icon" aria-hidden="true">
+                <SlidersHorizontal size={16} />
+              </span>
             </div>
-            <span className="inspector-header-icon" aria-hidden="true">
-              <SlidersHorizontal size={16} />
-            </span>
-          </div>
+          )}
           <div className="mapping-content">
             {selectedAppleRemote || !selectedMediaRemote ? (
               <AppleRemotePanel

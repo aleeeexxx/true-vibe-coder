@@ -416,6 +416,10 @@ export function PointerAssistTestPad({
 
   return (
     <section className={className} style={style} aria-label="Magnet target test area">
+      <div className="pointer-assist-test-heading">
+        <strong>Magnetic cursor test bench</strong>
+        <span>Small targets, vertical navigation and continuous scroll</span>
+      </div>
       <div
         className="pointer-assist-lock-indicator"
         aria-label={pointerAssistState.locked ? "Pointer is magnetically snapped" : "Pointer is free"}
